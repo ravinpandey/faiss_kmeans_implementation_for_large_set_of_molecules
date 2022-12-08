@@ -9,6 +9,9 @@ from rdkit.Chem import rdMolDescriptors as rdmd
 from tqdm import tqdm
 from functools import wraps
 from time import time
+import os.path
+import os
+
 
 
 def timing(f):
@@ -50,7 +53,11 @@ def save_data(fp_array, smiles_list, name_list, outfile_name):
     :param outfile_name: output file name
     :return: None
     """
-    h5f = h5py.File(outfile_name, 'w')
+    file_exists = os.path.exists(outfile_name)
+    if(not file_exists):
+        h5f = h5py.File(outfile_name, 'w')
+    else:
+        h5f = h5py.File(outfile_name, 'a')
     dt = h5py.special_dtype(vlen=bytes)
     h5f.create_dataset('fp_list', data=fp_array)
     h5f.create_dataset('smiles_list', (len(smiles_list), 1), dt, smiles_list)
@@ -85,15 +92,22 @@ def generate_fingerprints(infile_name):
 
 
 @timing
-def main(input_smiles_file, output_fp_file):
+def main(input_smiles_folder, output_fp_file):
     """
     Generate fingerprints and write to an hdf5 file
     :return:
     """
-    fp_list, smiles_list, name_list = generate_fingerprints(input_smiles_file)
-    outfile_name = output_fp_file
-    fp_array = make_np_array(fp_list)
-    save_data(fp_array, smiles_list, name_list, outfile_name)
+    path=input_smiles_folder
+    os.chdir(path)
+    for file in os.listdir():
+    # Check whether file is in text format or not
+        if file.endswith(".smi"):
+            file_path = f"{path}/{file}"
+            print(file_path)
+            fp_list, smiles_list, name_list = generate_fingerprints(file_path)
+            outfile_name = output_fp_file
+            fp_array = make_np_array(fp_list)
+            save_data(fp_array, smiles_list, name_list, outfile_name)
 
 
 if __name__ == "__main__":
