@@ -42,7 +42,7 @@ def make_np_array(lst, dtype=np.float32):
     """
     return np.array(lst, dtype=dtype)
 
-
+counter=0
 @timing
 def save_data(fp_array, smiles_list, name_list, outfile_name):
     """
@@ -54,14 +54,34 @@ def save_data(fp_array, smiles_list, name_list, outfile_name):
     :return: None
     """
     file_exists = os.path.exists(outfile_name)
-    if(not file_exists):
-        h5f = h5py.File(outfile_name, 'w')
+    h5f = h5py.File(outfile_name, 'a')
+    #dt = h5py.special_dtype(vlen=bytes)
+    print(fp_array.shape)
+    smiles_list=np.array(smiles_list).reshape(-1,1)
+    name_list=np.array(name_list).reshape(-1,1)
+    print(smiles_list.shape)
+    print(name_list.shape)
+    global counter
+    if(counter==0):
+        
+    
+        fp=h5f.create_dataset('fp_list', data=fp_array,compression="gzip", chunks=True, maxshape=(None,1024))
+        print("sahi hai",fp.shape)
+        sm=h5f.create_dataset('smiles_list', data=smiles_list,compression="gzip", chunks=True, maxshape=(None,1))
+        print(sm.shape)
+        nm=h5f.create_dataset('name_list',data=name_list, compression="gzip", chunks=True, maxshape=(None,1) )
+        print(nm.shape)
+        counter=counter+1
     else:
-        h5f = h5py.File(outfile_name, 'a')
-    dt = h5py.special_dtype(vlen=bytes)
-    h5f.create_dataset('fp_list', data=fp_array)
-    h5f.create_dataset('smiles_list', (len(smiles_list), 1), dt, smiles_list)
-    h5f.create_dataset('name_list', (len(name_list), 1), dt, name_list)
+        h5f['fp_list'].resize((h5f['fp_list'].shape[0] + fp_array.shape[0]), axis=0)
+        h5f['fp_list'][-fp_array.shape[0]:] = fp_array
+
+        h5f['smiles_list'].resize((h5f['smiles_list'].shape[0] + smiles_list.shape[0]), axis=0)
+        h5f['smiles_list'][-smiles_list.shape[0]:] = smiles_list
+
+        h5f['name_list'].resize((h5f['name_list'].shape[0] + name_list.shape[0]), axis=0)
+        h5f['name_list'][-name_list.shape[0]:] = name_list
+
     h5f.close()
 
 
@@ -107,6 +127,7 @@ def main(input_smiles_folder, output_fp_file):
             fp_list, smiles_list, name_list = generate_fingerprints(file_path)
             outfile_name = output_fp_file
             fp_array = make_np_array(fp_list)
+            print(fp_array.shape)
             save_data(fp_array, smiles_list, name_list, outfile_name)
 
 
